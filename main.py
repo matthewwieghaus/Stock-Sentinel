@@ -7,8 +7,10 @@ from email.mime.text import MIMEText
 import tkinter as tk
 from tkinter import ttk
 import os
+from dotenv import load_dotenv
 
 # Fetch credentials from environment variables
+load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.office365.com")
@@ -148,7 +150,7 @@ def main():
     for stock_ticker in portfolio.keys() | set(newsletter_only):
         try:
             # Fetch news data
-            news_data = fetch_stock_news(stock_ticker)
+            news_data = fetch_stock_news(company_name)
             articles = news_data.get("articles", [])
             if not articles:
                 email_body += f"<p>No news articles found for {stock_ticker}.</p>"

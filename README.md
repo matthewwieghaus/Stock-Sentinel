@@ -30,7 +30,7 @@ This project provides a tool for creating a stock portfolio and generating a wee
 
 2. Install the required libraries:
     ```bash
-    pip install requests openai yfinance
+    pip install -r requirements.txt
     ```
 
 3. Set up your API keys and email credentials:
