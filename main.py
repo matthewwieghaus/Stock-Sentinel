@@ -1,5 +1,4 @@
 import openai
-import requests
 import yfinance as yf
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -8,9 +7,11 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from dotenv import load_dotenv
+from newsapi import NewsApiClient
 
 # Fetch credentials from environment variables
 load_dotenv()
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.office365.com")
@@ -21,15 +22,42 @@ FROM_EMAIL = os.getenv("FROM_EMAIL")
 TO_EMAIL = os.getenv("TO_EMAIL")
 
 # Initialize the OpenAI client
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+client= openai.OpenAI(api_key=OPENAI_API_KEY)
 
-def fetch_stock_news(stock_ticker):
-    url = f"https://newsapi.org/v2/everything?q={stock_ticker}&apiKey={NEWS_API_KEY}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception("Failed to fetch news")
+# Initialize the News API client
+newsapi = NewsApiClient(api_key=NEWS_API_KEY)
+
+NEWS_DOMAINS = [
+    "yahoofinance.com",
+    "cnbc.com",
+    "barrons.com",
+    "marketwatch.com",
+    "bloomberg.com",
+    "nasdaq.com",
+    "reuters.com",
+    "wsj.com"
+]
+
+def get_company_name(ticker):
+    stock = yf.Ticker(ticker)
+    stock_info = stock.info
+    return stock_info.get('shortName', 'Unknown Company')
+
+def fetch_stock_news(company_name):
+    try:
+        all_articles = newsapi.get_everything(
+            q=company_name,
+            domains=','.join(NEWS_DOMAINS),
+            language='en',
+            sort_by='relevancy'
+        )
+        if all_articles['status'] == 'ok':
+            return all_articles
+        else:
+            raise Exception(f"News API error: {all_articles.get('message', 'Unknown error')}")
+    except Exception as e:
+        print(f"Failed to fetch news for {company_name}: {e}")
+        return None
 
 def analyze_data_with_gpt4(prompt, max_tokens=500):
     try:
@@ -49,21 +77,14 @@ def fetch_stock_data(stock_ticker):
     stock = yf.Ticker(stock_ticker)
     stock_info = stock.info
 
-    try:
-        company_name = stock_info['shortName']
-    except KeyError:
-        company_name = "Unknown Company"
-        
-    try:
-        current_price = stock_info['currentPrice']
-    except KeyError:
-        current_price = None
-        
-    try:
-        previous_close = stock_info['regularMarketPreviousClose']
-    except KeyError:
-        previous_close = None
-    
+    company_name = stock_info.get('shortName', 'Unknown Company')
+    current_price = stock_info.get('currentPrice')
+    previous_close = stock_info.get('regularMarketPreviousClose')
+    market_cap = stock_info.get('marketCap')
+    pe_ratio = stock_info.get('trailingPE')
+    eps = stock_info.get('trailingEps')
+    dividend_yield = stock_info.get('dividendYield')
+
     if current_price is not None and previous_close is not None:
         dollar_gain = current_price - previous_close
         percent_gain = (dollar_gain / previous_close) * 100
@@ -71,7 +92,7 @@ def fetch_stock_data(stock_ticker):
         dollar_gain = None
         percent_gain = None
     
-    return company_name, current_price, dollar_gain, percent_gain
+    return company_name, current_price, dollar_gain, percent_gain, market_cap, pe_ratio, eps, dividend_yield
 
 def send_email(subject, body):
     msg = MIMEMultipart()
@@ -134,7 +155,7 @@ def main():
     for stock_ticker, units in portfolio.items():
         try:
             # Fetch stock data from Yahoo Finance
-            company_name, current_price, dollar_gain, percent_gain = fetch_stock_data(stock_ticker)
+            company_name, current_price, dollar_gain, percent_gain, market_cap, pe_ratio, eps, dividend_yield = fetch_stock_data(stock_ticker)
             
             if current_price is not None:
                 stock_value = current_price * units
@@ -149,15 +170,29 @@ def main():
 
     for stock_ticker in portfolio.keys() | set(newsletter_only):
         try:
+            # Fetch company name for accurate news search
+            company_name = get_company_name(stock_ticker)
             # Fetch news data
             news_data = fetch_stock_news(company_name)
-            articles = news_data.get("articles", [])
-            if not articles:
-                email_body += f"<p>No news articles found for {stock_ticker}.</p>"
+            if news_data is None:
+                email_body += f"<p>Failed to fetch news for {company_name} ({stock_ticker}).</p><hr>"
                 continue
 
+            articles = news_data.get("articles", [])
+            if not articles:
+                email_body += f"<p>No news articles found for {company_name} ({stock_ticker}).</p>"
+                continue
+
+            # Fetch stock data again to include in the prompt
+            company_name, current_price, dollar_gain, percent_gain, market_cap, pe_ratio, eps, dividend_yield = fetch_stock_data(stock_ticker)
+
             # Prepare a prompt for GPT-4
-            prompt = f"Provide a cohesive financial analysis of the recent news for the stock ticker {stock_ticker}:\n"
+            prompt = (
+                f"Write a detailed financial analysis like a Wall Street Journal article for {company_name} ({stock_ticker}). "
+                f"Include the most important and interesting financial metrics from the following: Current Price: {current_price}, Dollar Gain: {dollar_gain}, Percent Gain: {percent_gain}, Market Cap: {market_cap}, P/E Ratio: {pe_ratio}, EPS: {eps}, Dividend Yield: {dividend_yield}. "
+                f"The summary should be around 350 words and focus on the most important and interesting news articles.\n\n"
+                f"Recent news articles:\n"
+            )
             for article in articles[:5]:  # Limiting to the top 5 articles
                 prompt += f"Title: {article['title']}\n"
                 if 'content' in article and article['content']:
@@ -166,7 +201,7 @@ def main():
                     prompt += f"Description: {article['description']}\n"
                 else:
                     prompt += "No content or description available.\n"
-
+            print(prompt)
             # Analyze data with GPT-4
             analysis = analyze_data_with_gpt4(prompt, max_tokens=2000)
             
@@ -177,7 +212,7 @@ def main():
                           f"{dollar_gain:+.2f} USD "
                           f"({percent_gain:+.2f}%)")
             else:
-                header = f"<b>{stock_ticker}</b> - News Analysis"
+                header = f"<b>{company_name}</b> ({stock_ticker}) - News Analysis"
             
             # Append the section to the email body
             email_body += f"<p>{header}</p><p>{analysis}</p><hr>"
@@ -192,6 +227,7 @@ def main():
         full_email_body = portfolio_summary + "<hr>" + email_body
         send_email(email_subject, full_email_body)
         print("Email sent successfully!")
+        print(full_email_body)
     else:
         print("No content to send.")
 
