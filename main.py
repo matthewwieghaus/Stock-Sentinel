@@ -4,14 +4,15 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import tkinter as tk
-from tkinter import ttk
 import os
 from dotenv import load_dotenv
 from newsapi import NewsApiClient
+import pandas as pd
 
 # Fetch credentials from environment variables
 load_dotenv()
-#fetch from .env
+
+# Fetch from .env
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.office365.com")
@@ -38,6 +39,8 @@ NEWS_DOMAINS = [
     "wsj.com"
 ]
 
+CSV_FILE = "portfolio.csv"
+
 def get_company_name(ticker):
     stock = yf.Ticker(ticker)
     stock_info = stock.info
@@ -59,7 +62,7 @@ def fetch_stock_news(company_name):
         print(f"Failed to fetch news for {company_name}: {e}")
         return None
 
-def analyze_data_with_gpt4(prompt, max_tokens=500):
+def analyze_data_with_gpt4(prompt, max_tokens=300):
     try:
         response = client.chat.completions.create(
             model="gpt-4",
@@ -110,6 +113,18 @@ def send_email(subject, body):
     server.quit()
 
 def get_user_input():
+    portfolio = {}
+    newsletter_only = []
+
+    # Load existing data from CSV
+    if os.path.exists(CSV_FILE):
+        df = pd.read_csv(CSV_FILE)
+        for index, row in df.iterrows():
+            if pd.notnull(row['Units']):
+                portfolio[row['Ticker']] = int(row['Units'])
+            else:
+                newsletter_only.append(row['Ticker'])
+
     def submit():
         for i in range(len(entries)):
             ticker = entries[i][0].get().strip()
@@ -120,6 +135,11 @@ def get_user_input():
                 else:
                     newsletter_only.append(ticker)
         root.destroy()
+
+        # Save data to CSV
+        data = {'Ticker': list(portfolio.keys()) + newsletter_only, 'Units': list(portfolio.values()) + [None] * len(newsletter_only)}
+        df = pd.DataFrame(data)
+        df.to_csv(CSV_FILE, index=False)
 
     root = tk.Tk()
     root.title("Stock Input")
@@ -201,7 +221,7 @@ def main():
                     prompt += f"Description: {article['description']}\n"
                 else:
                     prompt += "No content or description available.\n"
-            print(prompt)
+            
             # Analyze data with GPT-4
             analysis = analyze_data_with_gpt4(prompt, max_tokens=2000)
             
