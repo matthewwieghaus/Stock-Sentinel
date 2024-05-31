@@ -11,7 +11,7 @@ from newsapi import NewsApiClient
 
 # Fetch credentials from environment variables
 load_dotenv()
-
+#fetch from .env
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.office365.com")
