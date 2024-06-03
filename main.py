@@ -23,7 +23,7 @@ FROM_EMAIL = os.getenv("FROM_EMAIL")
 TO_EMAIL = os.getenv("TO_EMAIL")
 
 # Initialize the OpenAI client
-client= openai.OpenAI(api_key=OPENAI_API_KEY)
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 # Initialize the News API client
 newsapi = NewsApiClient(api_key=NEWS_API_KEY)
@@ -131,7 +131,10 @@ def get_user_input():
             units = entries[i][1].get().strip()
             if ticker:
                 if units:
-                    portfolio[ticker] = int(units)
+                    try:
+                        portfolio[ticker] = int(units)
+                    except ValueError:
+                        print(f"Invalid units for {ticker}. Skipping.")
                 else:
                     newsletter_only.append(ticker)
         root.destroy()
