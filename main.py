@@ -213,7 +213,7 @@ def main():
             prompt = (
                 f"Write a detailed financial analysis like a Wall Street Journal article for {company_name} ({stock_ticker}). "
                 f"Include the most important and interesting financial metrics from the following: Current Price: {current_price}, Dollar Gain: {dollar_gain}, Percent Gain: {percent_gain}, Market Cap: {market_cap}, P/E Ratio: {pe_ratio}, EPS: {eps}, Dividend Yield: {dividend_yield}. "
-                f"The summary should be around 350 words and focus on the most important and interesting news articles.\n\n"
+                f"The summary should be around 200 words and focus on the most important and interesting news articles.\n\n"
                 f"Recent news articles:\n"
             )
             for article in articles[:5]:  # Limiting to the top 5 articles
