@@ -1,61 +1,86 @@
-# Stock Portfolio and Newsletter
+# Stock Newsletter Generator
 
-This project provides a tool for creating a stock portfolio and generating a weekly newsletter containing financial information and recent news about selected stocks.
+This project is a Python-based tool that allows users to generate a weekly stock newsletter. It fetches stock data from Yahoo Finance, retrieves relevant news articles, and generates a summary using OpenAI's GPT-4 model. The generated newsletter is then sent via email.
 
 ## Features
 
-- Fetches current stock prices and changes using Yahoo Finance
-- Retrieves recent news articles related to the stocks using News API
-- Generates a report with stock performance and news summary using GPT-4
-- Sends the report via email
+- Fetch stock data from Yahoo Finance
+- Retrieve relevant news articles using the News API
+- Generate detailed financial analyses using OpenAI's GPT-4 model
+- Send the generated newsletter via email
+- User-friendly Tkinter interface to input, update, and modify stock tickers and units
 
 ## Requirements
 
-- Python 3.x
-- `requests` library
-- `openai` library
-- `yfinance` library
-- `tkinter` library
-- News API key from [newsapi.org](https://newsapi.org/)
-- OpenAI API key from [openai.com](https://openai.com/)
-- SMTP server details for sending emails
+- Python 3.7+
+- `openai`
+- `yfinance`
+- `smtplib`
+- `tkinter`
+- `python-dotenv`
+- `newsapi-python`
+- `pandas`
 
-## Setup
+## Installation
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/Stock-Portfolio-and-Newsletter.git
-    cd Stock-Portfolio-and-Newsletter
+    git clone https://github.com/yourusername/stock-newsletter.git
+    cd stock-newsletter
     ```
 
-2. Install the required libraries:
+2. Install the required Python packages:
     ```bash
-    pip install -r requirements.txt
+    pip install openai yfinance python-dotenv newsapi-python pandas
     ```
 
-3. Set up your API keys and email credentials:
-    - Create a `.env` file in the root directory
-    - Add your API keys and email credentials in the following format:
-        ```
-        NEWS_API_KEY=your_news_api_key
-        OPENAI_API_KEY=your_openai_api_key
-        SMTP_SERVER=smtp.your-email-provider.com
-        SMTP_PORT=587
-        SMTP_USERNAME=your_email_username
-        SMTP_PASSWORD=your_email_password
-        FROM_EMAIL=your_email@example.com
-        TO_EMAIL=recipient_email@example.com
-        ```
+3. Create a `.env` file in the project directory and add the following environment variables:
+    ```
+    OPENAI_API_KEY=your_openai_api_key
+    NEWS_API_KEY=your_news_api_key
+    SMTP_SERVER=smtp.office365.com
+    SMTP_PORT=587
+    SMTP_USERNAME=your_smtp_username
+    SMTP_PASSWORD=your_smtp_password
+    FROM_EMAIL=your_email@example.com
+    TO_EMAIL=recipient_email@example.com
+    ```
 
 ## Usage
 
-Run the script and follow the prompts to enter stock tickers and units:
-```bash
-python main.py
+1. Run the script:
+    ```bash
+    python main.py
+    ```
+
+2. The Tkinter interface will open, displaying existing data from the `portfolio.csv` file if it exists. You can enter new stock tickers and units or update existing ones.
+
+3. After entering the stock tickers and units, click the "Submit" button. The data will be saved to `portfolio.csv`.
+
+4. The script will fetch the stock data and news articles, generate the newsletter, and send it via email.
+
+## Updating Stock Data Using Tkinter Interface
+
+The Tkinter interface allows you to update existing stock tickers and units. Here's how it works:
+
+- If a `portfolio.csv` file exists, the interface will pre-fill the entries with existing data.
+- You can modify the existing data or add new stock tickers and units.
+- If you leave the units field empty for a ticker, it will be included only in the newsletter portion and not in the portfolio summary.
+- Click "Submit" to save the changes and close the interface. The updated data will be saved back to `portfolio.csv`.
+
+## CSV File Structure
+
+The `portfolio.csv` file has the following structure:
+```
+Ticker,Units
+AAPL,10
+GOOGL,5
+MSFT,
 ```
 
-The generated report will be printed in the console and sent via email.
+- `Ticker`: The stock ticker symbol.
+- `Units`: The number of units (optional).
 
-## Contributing
+## Example
 
-Feel free to submit pull requests to enhance the functionality or fix issues.
+After running the script and updating the data using the Tkinter interface, the script will generate an email with a portfolio summary and detailed financial analyses of the specified stocks.
