@@ -117,18 +117,18 @@ def get_user_input():
     newsletter_only = []
 
     # Load existing data from CSV
+    existing_data = []
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
         for index, row in df.iterrows():
-            if pd.notnull(row['Units']):
-                portfolio[row['Ticker']] = int(row['Units'])
-            else:
-                newsletter_only.append(row['Ticker'])
+            existing_data.append((row['Ticker'], str(row['Units']) if pd.notnull(row['Units']) else ''))
 
     def submit():
-        for i in range(len(entries)):
-            ticker = entries[i][0].get().strip()
-            units = entries[i][1].get().strip()
+        portfolio.clear()
+        newsletter_only.clear()
+        for entry in entries:
+            ticker = entry[0].get().strip()
+            units = entry[1].get().strip()
             if ticker:
                 if units:
                     try:
@@ -150,15 +150,19 @@ def get_user_input():
     tk.Label(root, text="Enter Stock Tickers and Units (Optional)").grid(row=0, column=0, columnspan=2)
 
     entries = []
-    for i in range(10):  # Allow up to 10 tickers
+    for i in range(max(len(existing_data), 10)):  # Show at least 10 rows or the number of existing entries
         ticker_entry = tk.Entry(root)
-        ticker_entry.grid(row=i+1, column=0)
         units_entry = tk.Entry(root)
+        if i < len(existing_data):
+            ticker, units = existing_data[i]
+            ticker_entry.insert(0, ticker)
+            units_entry.insert(0, units)
+        ticker_entry.grid(row=i+1, column=0)
         units_entry.grid(row=i+1, column=1)
         entries.append((ticker_entry, units_entry))
 
     submit_button = tk.Button(root, text="Submit", command=submit)
-    submit_button.grid(row=11, column=0, columnspan=2)
+    submit_button.grid(row=max(len(existing_data), 10) + 1, column=0, columnspan=2)
 
     root.mainloop()
 
