@@ -45,6 +45,10 @@ This project allows you to manage a stock portfolio, fetch financial data and ne
 
 2. Follow the prompts to enter your stock tickers and units.
 
+## Sample Output
+![image](https://github.com/user-attachments/assets/4702e794-45de-4310-a0fc-c70272d0fd2f)
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
