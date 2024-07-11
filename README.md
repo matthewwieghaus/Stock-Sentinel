@@ -1,14 +1,15 @@
 
 # Stock Sentinel
 
-This project allows you to manage a stock portfolio, fetch financial data and news, and generate detailed financial analysis reports using OpenAI's GPT-4 model.
+Stock Sentinel is a comprehensive stock portfolio management and financial analysis application. It allows users to manage stock portfolios, fetch real-time financial data, retrieve relevant news articles, and generate detailed financial analysis reports.
 
 ## Features
 
-- Fetch stock data from Yahoo Finance
-- Retrieve relevant news articles using the News API
-- Generate detailed financial analyses using OpenAI's GPT-4 model
-- Send a weekly portfolio update via email
+-Real-Time Data Fetching: Retrieves stock data from Yahoo Finance.
+-News Integration: Fetches relevant news articles using the News API.
+-Advanced Analysis: Uses OpenAI's GPT-4 model to generate in-depth, professional-grade analysis of stock performance.
+-User-Friendly Interface: Developed a Tkinter-based GUI for easy input and management of stock tickers and units.
+-Automated Reporting: Generates and emails weekly portfolio summaries and detailed stock analysis reports.
 
 ## Installation
 
