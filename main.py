@@ -5,25 +5,25 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import tkinter as tk
 import os
-from dotenv import load_dotenv
 from newsapi import NewsApiClient
 import pandas as pd
+from dotenv import load_dotenv
 
-# Fetch credentials from environment variables
+# Load environment variables from .env file
 load_dotenv()
 
-# Fetch from .env
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Initialize variables from .env
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.office365.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 FROM_EMAIL = os.getenv("FROM_EMAIL")
 TO_EMAIL = os.getenv("TO_EMAIL")
 
 # Initialize the OpenAI client
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
 # Initialize the News API client
 newsapi = NewsApiClient(api_key=NEWS_API_KEY)
@@ -42,11 +42,13 @@ NEWS_DOMAINS = [
 CSV_FILE = "portfolio.csv"
 
 def get_company_name(ticker):
+    """Fetches the company name for a given stock ticker."""
     stock = yf.Ticker(ticker)
     stock_info = stock.info
     return stock_info.get('shortName', 'Unknown Company')
 
 def fetch_stock_news(company_name):
+    """Fetches the latest news articles for a given company name."""
     try:
         all_articles = newsapi.get_everything(
             q=company_name,
@@ -63,8 +65,9 @@ def fetch_stock_news(company_name):
         return None
 
 def analyze_data_with_gpt4(prompt, max_tokens=300):
+    """Uses OpenAI's GPT-4 to generate a financial analysis based on the given prompt."""
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a financial analyst providing detailed and cohesive analyses of stock news."},
@@ -72,25 +75,26 @@ def analyze_data_with_gpt4(prompt, max_tokens=300):
             ],
             max_tokens=max_tokens
         )
-        return response.choices[0].message.content
+        return response.choices[0].message['content']
     except Exception as e:
         return f"An error occurred: {e}"
 
 def fetch_stock_data(stock_ticker):
+    """Fetches the stock data for a given stock ticker."""
     stock = yf.Ticker(stock_ticker)
     stock_info = stock.info
 
     company_name = stock_info.get('shortName', 'Unknown Company')
-    current_price = stock_info.get('currentPrice')
-    previous_close = stock_info.get('regularMarketPreviousClose')
+    current_price = round(stock_info.get('currentPrice', 0), 2)
+    previous_close = round(stock_info.get('regularMarketPreviousClose', 0), 2)
     market_cap = stock_info.get('marketCap')
     pe_ratio = stock_info.get('trailingPE')
     eps = stock_info.get('trailingEps')
     dividend_yield = stock_info.get('dividendYield')
 
     if current_price is not None and previous_close is not None:
-        dollar_gain = current_price - previous_close
-        percent_gain = (dollar_gain / previous_close) * 100
+        dollar_gain = round(current_price - previous_close, 2)
+        percent_gain = round((dollar_gain / previous_close) * 100, 2)
     else:
         dollar_gain = None
         percent_gain = None
@@ -98,6 +102,7 @@ def fetch_stock_data(stock_ticker):
     return company_name, current_price, dollar_gain, percent_gain, market_cap, pe_ratio, eps, dividend_yield
 
 def send_email(subject, body):
+    """Sends an email with the given subject and body."""
     msg = MIMEMultipart()
     msg['From'] = FROM_EMAIL
     msg['To'] = TO_EMAIL
@@ -113,6 +118,7 @@ def send_email(subject, body):
     server.quit()
 
 def get_user_input():
+    """Prompts the user to enter stock tickers and units."""
     portfolio = {}
     newsletter_only = []
 
@@ -151,8 +157,8 @@ def get_user_input():
 
     entries = []
     for i in range(max(len(existing_data), 10)):  # Show at least 10 rows or the number of existing entries
-        ticker_entry = tk.Entry(root)
-        units_entry = tk.Entry(root)
+        ticker_entry = tk.Entry(root, justify='center')
+        units_entry = tk.Entry(root, justify='center')
         if i < len(existing_data):
             ticker, units = existing_data[i]
             ticker_entry.insert(0, ticker)
@@ -169,6 +175,7 @@ def get_user_input():
     return portfolio, newsletter_only
 
 def main():
+    """Main function to run the application."""
     global portfolio, newsletter_only
     portfolio = {}
     newsletter_only = []
