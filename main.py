@@ -4,10 +4,15 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import tkinter as tk
+from tkinter import ttk
 import os
 from newsapi import NewsApiClient
 import pandas as pd
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,7 +28,7 @@ FROM_EMAIL = os.getenv("FROM_EMAIL")
 TO_EMAIL = os.getenv("TO_EMAIL")
 
 # Initialize the OpenAI client
-openai.api_key = OPENAI_API_KEY
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 # Initialize the News API client
 newsapi = NewsApiClient(api_key=NEWS_API_KEY)
@@ -40,6 +45,9 @@ NEWS_DOMAINS = [
 ]
 
 CSV_FILE = "portfolio.csv"
+
+COLOR_PALETTE = ['#03045E', '#023E8A', '#0077B6', '#0096C7', '#00B4D8', 
+                 '#48CAE4', '#90E0EF', '#ADE8F4', '#CAF0F8']
 
 def get_company_name(ticker):
     """Fetches the company name for a given stock ticker."""
@@ -64,10 +72,14 @@ def fetch_stock_news(company_name):
         print(f"Failed to fetch news for {company_name}: {e}")
         return None
 
+def bold_numbers(text):
+    """Bold all numbers and their surrounding symbols in the given text."""
+    return re.sub(r'(\S*\d+\S*)', r'<b>\1</b>', text)
+
 def analyze_data_with_gpt4(prompt, max_tokens=300):
     """Uses OpenAI's GPT-4 to generate a financial analysis based on the given prompt."""
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a financial analyst providing detailed and cohesive analyses of stock news."},
@@ -75,7 +87,8 @@ def analyze_data_with_gpt4(prompt, max_tokens=300):
             ],
             max_tokens=max_tokens
         )
-        return response.choices[0].message['content']
+        analysis = response.choices[0].message.content
+        return bold_numbers(analysis) # Bold the numbers in the analysis
     except Exception as e:
         return f"An error occurred: {e}"
 
@@ -101,14 +114,26 @@ def fetch_stock_data(stock_ticker):
     
     return company_name, current_price, dollar_gain, percent_gain, market_cap, pe_ratio, eps, dividend_yield
 
-def send_email(subject, body):
+def send_email(subject, body, inline_images=[]):
     """Sends an email with the given subject and body."""
-    msg = MIMEMultipart()
+    msg = MIMEMultipart('related')
     msg['From'] = FROM_EMAIL
     msg['To'] = TO_EMAIL
     msg['Subject'] = subject
 
-    msg.attach(MIMEText(body, 'html'))
+    msg_alternative = MIMEMultipart('alternative')
+    msg.attach(msg_alternative)
+
+    msg_text = MIMEText(body, 'html')
+    msg_alternative.attach(msg_text)
+
+    for image in inline_images:
+        with open(image['path'], 'rb') as f:
+            img_data = f.read()
+        img = MIMEText(img_data, 'base64')
+        img.add_header('Content-ID', f'<{image["cid"]}>')
+        img.add_header('Content-Disposition', 'inline', filename=image['path'])
+        msg.attach(img)
 
     server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
     server.starttls()
@@ -150,29 +175,95 @@ def get_user_input():
         df = pd.DataFrame(data)
         df.to_csv(CSV_FILE, index=False)
 
+    def add_row():
+        ticker_entry = ttk.Entry(main_frame, justify='center', style="TEntry")
+        units_entry = ttk.Entry(main_frame, justify='center', style="TEntry")
+        row_position = len(entries) + 1
+        ticker_entry.grid(row=row_position, column=0, padx=5, pady=5)
+        units_entry.grid(row=row_position, column=1, padx=5, pady=5)
+        entries.append((ticker_entry, units_entry))
+        main_frame.grid_rowconfigure(row_position, weight=1)
+
+        # Move the buttons down
+        add_row_button.grid(row=row_position + 1, column=0, columnspan=2, pady=10)
+        submit_button.grid(row=row_position + 2, column=0, columnspan=2, pady=10)
+
     root = tk.Tk()
     root.title("Stock Input")
+    root.geometry("400x600")  # Increased window size
 
-    tk.Label(root, text="Enter Stock Tickers and Units (Optional)").grid(row=0, column=0, columnspan=2)
+    # Set a consistent color scheme
+    root.configure(bg='#03045E')
+
+    # Define custom styles
+    style = ttk.Style()
+    style.configure("TLabel", font=('Helvetica', 12, 'bold'), background='#03045E', foreground='#FFFFFF', padding=5)
+    style.configure("TEntry", font=('Helvetica', 12, 'bold'), padding=5, relief="solid", bordercolor='#00B4D8', borderwidth=2)
+    style.configure("TButton", font=('Helvetica', 12, 'bold'), padding=5, relief="solid", bordercolor='#00B4D8', borderwidth=2)
+    style.configure("TFrame", background='#03045E')
+
+    # Main frame
+    main_frame = ttk.Frame(root, padding="10 10 10 10")
+    main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(0, weight=1)
+
+    # Title label
+    ttk.Label(main_frame, text="Enter Stock Tickers and Units (Optional)", style="TLabel").grid(row=0, column=0, columnspan=2, pady=(0, 10))
 
     entries = []
-    for i in range(max(len(existing_data), 10)):  # Show at least 10 rows or the number of existing entries
-        ticker_entry = tk.Entry(root, justify='center')
-        units_entry = tk.Entry(root, justify='center')
+    for i in range(5):  # Start with 5 rows
+        ticker_entry = ttk.Entry(main_frame, justify='center', style="TEntry")
+        units_entry = ttk.Entry(main_frame, justify='center', style="TEntry")
         if i < len(existing_data):
             ticker, units = existing_data[i]
             ticker_entry.insert(0, ticker)
             units_entry.insert(0, units)
-        ticker_entry.grid(row=i+1, column=0)
-        units_entry.grid(row=i+1, column=1)
+        ticker_entry.grid(row=i+1, column=0, padx=5, pady=5)
+        units_entry.grid(row=i+1, column=1, padx=5, pady=5)
         entries.append((ticker_entry, units_entry))
 
-    submit_button = tk.Button(root, text="Submit", command=submit)
-    submit_button.grid(row=max(len(existing_data), 10) + 1, column=0, columnspan=2)
+    add_row_button = ttk.Button(main_frame, text="Add Row", command=add_row, style="TButton")
+    add_row_button.grid(row=6, column=0, columnspan=2, pady=10)
+
+    submit_button = ttk.Button(main_frame, text="Submit", command=submit, style="TButton")
+    submit_button.grid(row=7, column=0, columnspan=2, pady=10)
+
+    # Center the main frame
+    for i in range(8):
+        main_frame.grid_rowconfigure(i, weight=1)
+    main_frame.grid_columnconfigure(0, weight=1)
+    main_frame.grid_columnconfigure(1, weight=1)
 
     root.mainloop()
 
     return portfolio, newsletter_only
+
+def generate_pie_chart(portfolio_data):
+    """Generates a pie chart of the portfolio holdings."""
+    labels = portfolio_data.keys()
+    sizes = portfolio_data.values()
+    colors = ['#03045E', '#023E8A', '#0077B6', '#0096C7', '#00B4D8', 
+              '#48CAE4', '#90E0EF', '#ADE8F4', '#CAF0F8']
+
+    fig, ax = plt.subplots()
+    wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, textprops={'fontweight': 'bold'}, colors=colors)
+    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    # Change the color of the numbers to white
+    for autotext in autotexts:
+        autotext.set_color('white')
+
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png')
+    plt.close()
+    buffer.seek(0)
+
+    image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+
+    return image_base64
 
 def main():
     """Main function to run the application."""
@@ -183,6 +274,7 @@ def main():
     portfolio, newsletter_only = get_user_input()
 
     total_value = 0
+    portfolio_values = {}
     portfolio_summary = "<h2>Portfolio Summary</h2>"
     email_body = ""
 
@@ -194,8 +286,9 @@ def main():
             if current_price is not None:
                 stock_value = current_price * units
                 total_value += stock_value
+                portfolio_values[company_name] = stock_value
                 portfolio_summary += (f"<p><b>{company_name}</b> ({stock_ticker}): "
-                                      f"{units} units @ {current_price:.2f} USD/unit = {stock_value:.2f} USD</p>")
+                                      f"{units:,} units @ {current_price:,.2f} USD/unit = {stock_value:,.2f} USD</p>")
             else:
                 portfolio_summary += f"<p><b>{stock_ticker}</b> - Price information not available</p>"
 
@@ -239,12 +332,15 @@ def main():
             # Analyze data with GPT-4
             analysis = analyze_data_with_gpt4(prompt, max_tokens=2000)
             
+            # Bold dollar and percentage values in analysis
+            analysis = analysis.replace('$', '<b>$</b>').replace('%', '<b>%</b>')
+
             # Format the section header
             if stock_ticker in portfolio and current_price is not None and dollar_gain is not None and percent_gain is not None:
                 header = (f"<b>{company_name}</b> "
-                          f"{current_price:.2f} USD "
-                          f"{dollar_gain:+.2f} USD "
-                          f"({percent_gain:+.2f}%)")
+                          f"{current_price:,.2f} USD "
+                          f"{dollar_gain:+,.2f} USD "
+                          f"({percent_gain:+,.2f}%)")
             else:
                 header = f"<b>{company_name}</b> ({stock_ticker}) - News Analysis"
             
@@ -256,9 +352,14 @@ def main():
 
     if email_body:
         # Prepare the email content
-        email_subject = "Weekly Portfolio Update"
-        portfolio_summary += f"<p><b>Total Portfolio Value:</b> {total_value:.2f} USD</p>"
-        full_email_body = portfolio_summary + "<hr>" + email_body
+        email_subject = "Stock Sentinel"
+        portfolio_summary += f"<p><b>Total Portfolio Value:</b> {total_value:,.2f} USD</p>"
+
+        # Generate the pie chart
+        chart_base64 = generate_pie_chart(portfolio_values)
+
+        # Embed the chart in the email body
+        full_email_body = portfolio_summary + "<hr>" + f'<img src="data:image/png;base64,{chart_base64}">' + "<hr>" + email_body
         send_email(email_subject, full_email_body)
         print("Email sent successfully!")
         print(full_email_body)
