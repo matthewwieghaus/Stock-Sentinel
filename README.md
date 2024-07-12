@@ -51,10 +51,10 @@ Stock Sentinel is a comprehensive stock portfolio management and financial analy
 2. Follow the prompts to enter your stock tickers and units.
 
 ## Sample Input
-![image](https://github.com/user-attachments/assets/34fe3205-e8dd-44bb-933d-c11d993a9e6a)
+![image](https://github.com/user-attachments/assets/cb6cc2e9-7fe3-4f83-b3f9-afb8baa29979)
 
 ## Sample Output
-![image](https://github.com/user-attachments/assets/4702e794-45de-4310-a0fc-c70272d0fd2f)
+![image](https://github.com/user-attachments/assets/0492d1a5-0687-4822-90d0-026c89d074bf)
 
 ## License
 
