@@ -5,15 +5,21 @@ Stock Sentinel is a comprehensive stock portfolio management and financial analy
 
 ## Features
 
--Real-Time Data Fetching: Retrieves stock data from Yahoo Finance.
+-**Real-Time Data Fetching:** Retrieves stock data from Yahoo Finance.
 
--News Integration: Fetches relevant news articles using the News API.
+-**News Integration:** Fetches relevant news articles using the News API.
 
--Advanced Analysis: Uses OpenAI's GPT-4 model to generate in-depth, professional-grade analysis of stock performance.
+-**Advanced Analysis:** Uses OpenAI's GPT-4 model to generate in-depth, professional-grade analysis of stock performance.
 
--User-Friendly Interface: Developed a Tkinter-based GUI for easy input and management of stock tickers and units.
+-**User-Friendly Interface:** Developed a Tkinter-based GUI for easy input and management of stock tickers and units.
 
--Automated Reporting: Generates and emails weekly portfolio summaries and detailed stock analysis reports.
+-**Automated Reporting:** Generates and emails weekly portfolio summaries and detailed stock analysis reports.
+
+## Sample Input
+![image](https://github.com/user-attachments/assets/cb6cc2e9-7fe3-4f83-b3f9-afb8baa29979)
+
+## Sample Output
+![image](https://github.com/user-attachments/assets/0492d1a5-0687-4822-90d0-026c89d074bf)
 
 ## Installation
 
@@ -49,12 +55,6 @@ Stock Sentinel is a comprehensive stock portfolio management and financial analy
    ```
 
 2. Follow the prompts to enter your stock tickers and units.
-
-## Sample Input
-![image](https://github.com/user-attachments/assets/cb6cc2e9-7fe3-4f83-b3f9-afb8baa29979)
-
-## Sample Output
-![image](https://github.com/user-attachments/assets/0492d1a5-0687-4822-90d0-026c89d074bf)
 
 ## License
 
